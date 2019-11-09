@@ -50,7 +50,7 @@ namespace Neo.Compiler
             }
             else
             {
-                log.Log("File not exist:" + filename);
+                log.Log("File not found:" + filename);
                 return;
             }
 
