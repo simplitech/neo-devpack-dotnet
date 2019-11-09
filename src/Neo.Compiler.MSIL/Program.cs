@@ -33,14 +33,13 @@ namespace Neo.Compiler
             string filename = args[0];
             string onlyname = Path.GetFileNameWithoutExtension(filename);
             string filepdb = onlyname + ".pdb";
-            string dllName = onlyname + ".dll";
+            var path = new FileInfo(filename);
 
-            var path = new FileInfo(filename).Directory.FullName;
-            if (!string.IsNullOrEmpty(path))
+            if (path.Exists)
             {
                 try
                 {
-                    Directory.SetCurrentDirectory(path);
+                    Directory.SetCurrentDirectory(path.Directory.FullName);
                 }
                 catch
                 {
@@ -48,6 +47,11 @@ namespace Neo.Compiler
                     Environment.Exit(-1);
                     return;
                 }
+            }
+            else
+            {
+                log.Log("File not exist:" + filename);
+                return;
             }
 
             ILModule mod = new ILModule(log);
@@ -57,7 +61,7 @@ namespace Neo.Compiler
             //open file
             try
             {
-                fs = File.OpenRead(dllName);
+                fs = path.OpenRead();
 
                 if (File.Exists(filepdb))
                 {
