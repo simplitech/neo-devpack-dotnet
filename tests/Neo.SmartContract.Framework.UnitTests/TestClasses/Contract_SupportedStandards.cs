@@ -1,14 +1,14 @@
-using Neo.SmartContract.Framework.Services.Neo;
-using Neo.SmartContract.Framework;
+using Neo.SmartContract.Framework.Attributes;
+using Neo.SmartContract.Framework.Services;
 
-namespace Neo.Compiler.MSIL.TestClasses
+namespace Neo.SmartContract.Framework.UnitTests.TestClasses
 {
     [SupportedStandards("NEP10","NEP5")]
-    public class Contract_SupportedStandards : SmartContract.Framework.SmartContract
+    public class Contract_SupportedStandards : SmartContract
     {
-        public static bool AccountIsStandard(byte[] scripthash)
+        public static bool TestStandard()
         {
-            return Account.IsStandard(scripthash);
+            return true;
         }
     }
 }

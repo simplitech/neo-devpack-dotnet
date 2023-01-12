@@ -1,17 +1,17 @@
-using Neo.SmartContract.Framework.Services.Neo;
+using Neo.SmartContract.Framework.Native;
 
-namespace Neo.Compiler.MSIL.TestClasses
+namespace Neo.SmartContract.Framework.UnitTests.TestClasses
 {
-    public class Contract_Json : SmartContract.Framework.SmartContract
+    public class Contract_Json : SmartContract
     {
         public static string Serialize(object obj)
         {
-            return Json.Serialize(obj);
+            return StdLib.JsonSerialize(obj);
         }
 
         public static object Deserialize(string json)
         {
-            return Json.Deserialize(json);
+            return StdLib.JsonDeserialize(json);
         }
     }
 }

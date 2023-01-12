@@ -1,44 +1,57 @@
-using Neo.SmartContract.Framework.Services.Neo;
+using Neo.Cryptography.ECC;
+using Neo.SmartContract.Framework.Native;
+using System;
 using System.ComponentModel;
 using System.Numerics;
-using System;
 
-namespace Neo.Compiler.MSIL.TestClasses
+namespace Neo.SmartContract.Framework.UnitTests.TestClasses
 {
-    public class Contract_Native : SmartContract.Framework.SmartContract
+    public class Contract_Native : SmartContract
     {
         [DisplayName("NEO_Decimals")]
         public static int NEO_Decimals()
         {
-            return (int)NEO.Decimals();
+            return NEO.Decimals;
         }
 
-        [DisplayName("NEO_Name")]
-        public static string NEO_Name()
+        [DisplayName("NEO_Transfer")]
+        public static bool NEO_Transfer(UInt160 from, UInt160 to, BigInteger amount)
         {
-            return NEO.Name();
+            return NEO.Transfer(from, to, amount, null);
         }
 
         [DisplayName("NEO_BalanceOf")]
-        public static BigInteger NEO_BalanceOf(byte[] account)
+        public static BigInteger NEO_BalanceOf(UInt160 account)
         {
             return NEO.BalanceOf(account);
         }
 
-        [DisplayName("NEO_GetValidators")]
-        public static string[] NEO_GetValidators()
+        [DisplayName("NEO_GetAccountState")]
+        public static object NEO_GetAccountState(UInt160 account)
         {
-            return NEO.GetValidators();
+            return NEO.GetAccountState(account);
+        }
+
+        [DisplayName("NEO_GetGasPerBlock")]
+        public static BigInteger NEO_GetGasPerBlock()
+        {
+            return NEO.GetGasPerBlock();
+        }
+
+        [DisplayName("NEO_UnclaimedGas")]
+        public static BigInteger NEO_UnclaimedGas(UInt160 account, uint end)
+        {
+            return NEO.UnclaimedGas(account, end);
         }
 
         [DisplayName("NEO_RegisterCandidate")]
-        public static bool NEO_RegisterCandidate(byte[] pubkey)
+        public static bool NEO_RegisterCandidate(ECPoint pubkey)
         {
             return NEO.RegisterCandidate(pubkey);
         }
 
         [DisplayName("NEO_GetCandidates")]
-        public static (string, BigInteger)[] NEO_GetCandidates()
+        public static (ECPoint, BigInteger)[] NEO_GetCandidates()
         {
             return NEO.GetCandidates();
         }
@@ -46,38 +59,20 @@ namespace Neo.Compiler.MSIL.TestClasses
         [DisplayName("GAS_Decimals")]
         public static int GAS_Decimals()
         {
-            return (int)GAS.Decimals();
+            return GAS.Decimals;
         }
 
-        [DisplayName("GAS_Name")]
-        public static string GAS_Name()
-        {
-            return GAS.Name();
-        }
-
-        public static BigInteger Policy_GetFeePerByte()
+        [DisplayName("Policy_GetFeePerByte")]
+        public static long Policy_GetFeePerByte()
         {
             return Policy.GetFeePerByte();
         }
 
-        public static bool Policy_SetMaxTransactionsPerBlock(uint value)
+        [DisplayName("Policy_IsBlocked")]
+        public static bool Policy_IsBlocked(UInt160 account)
         {
-            return Policy.SetMaxTransactionsPerBlock(value);
-        }
-
-        public static uint Policy_GetMaxTransactionsPerBlock()
-        {
-            return Policy.GetMaxTransactionsPerBlock();
-        }
-
-        public static bool Policy_BlockAccount(byte[] account)
-        {
-            return Policy.BlockAccount(account);
-        }
-
-        public static object[] Policy_GetBlockedAccounts()
-        {
-            return Policy.GetBlockedAccounts();
+            return Policy.IsBlocked(account);
         }
     }
 }
+

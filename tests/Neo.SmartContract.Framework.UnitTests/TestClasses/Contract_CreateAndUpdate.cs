@@ -1,13 +1,14 @@
-using Neo.SmartContract.Framework.Services.Neo;
+using Neo.SmartContract.Framework.Native;
+using Neo.SmartContract.Framework.Services;
 
-namespace Neo.Compiler.MSIL.TestClasses
+namespace Neo.SmartContract.Framework.UnitTests.TestClasses
 {
-    public class Contract_CreateAndUpdate : SmartContract.Framework.SmartContract
+    public class Contract_CreateAndUpdate : SmartContract
     {
-        public static int OldContract(byte[] script, string manifest)
+        public static string OldContract(byte[] nefFile, string manifest)
         {
-            Contract.Update(script, manifest);
-            return 123;
+            ContractManagement.Update((ByteString)nefFile, manifest, null);
+            return ContractManagement.GetContract(Runtime.ExecutingScriptHash).Manifest.Name;
         }
     }
 }

@@ -1,70 +1,36 @@
-using Neo.SmartContract.Framework.Services.Neo;
+using Neo.Cryptography.ECC;
+using Neo.SmartContract.Framework.Native;
 using System.ComponentModel;
 
-namespace Neo.Compiler.MSIL.TestClasses
+namespace Neo.SmartContract.Framework.UnitTests.TestClasses
 {
-    public class Contract_Crypto : SmartContract.Framework.SmartContract
+    public class Contract_Crypto : SmartContract
     {
         [DisplayName("SHA256")]
         public static byte[] SHA256(byte[] value)
         {
-            return Crypto.SHA256(value);
+            return (byte[])CryptoLib.Sha256((ByteString)value);
         }
 
         [DisplayName("RIPEMD160")]
         public static byte[] RIPEMD160(byte[] value)
         {
-            return Crypto.RIPEMD160(value);
+            return (byte[])CryptoLib.Ripemd160((ByteString)value);
         }
 
-        public static byte[] Hash160(byte[] value)
+        public static byte[] Murmur32(byte[] value, uint seed)
         {
-            return Crypto.Hash160(value);
+            return (byte[])CryptoLib.Murmur32((ByteString)value, seed);
         }
 
-        public static byte[] Hash256(byte[] value)
+        public static bool Secp256r1VerifySignatureWithMessage(byte[] message, ECPoint pubkey, byte[] signature)
         {
-            return Crypto.Hash256(value);
+            return CryptoLib.VerifyWithECDsa((ByteString)message, pubkey, (ByteString)signature, NamedCurve.secp256r1);
         }
 
-        public static bool Secp256r1VerifySignature(byte[] pubkey, byte[] signature)
+        public static bool Secp256k1VerifySignatureWithMessage(byte[] message, ECPoint pubkey, byte[] signature)
         {
-            return Crypto.ECDsa.Secp256r1.Verify(null, pubkey, signature);
-        }
-
-        public static bool Secp256r1VerifySignatureWithMessage(byte[] message, byte[] pubkey, byte[] signature)
-        {
-            return Crypto.ECDsa.Secp256r1.Verify(message, pubkey, signature);
-        }
-
-        public static bool Secp256r1VerifySignatures(byte[][] pubkeys, byte[][] signatures)
-        {
-            return Crypto.ECDsa.Secp256r1.CheckMultiSig(null, pubkeys, signatures);
-        }
-
-        public static bool Secp256r1VerifySignaturesWithMessage(byte[] message, byte[][] pubkeys, byte[][] signatures)
-        {
-            return Crypto.ECDsa.Secp256r1.CheckMultiSig(message, pubkeys, signatures);
-        }
-
-        public static bool Secp256k1VerifySignature(byte[] pubkey, byte[] signature)
-        {
-            return Crypto.ECDsa.Secp256k1.Verify(null, pubkey, signature);
-        }
-
-        public static bool Secp256k1VerifySignatureWithMessage(byte[] message, byte[] pubkey, byte[] signature)
-        {
-            return Crypto.ECDsa.Secp256k1.Verify(message, pubkey, signature);
-        }
-
-        public static bool Secp256k1VerifySignatures(byte[][] pubkeys, byte[][] signatures)
-        {
-            return Crypto.ECDsa.Secp256k1.CheckMultiSig(null, pubkeys, signatures);
-        }
-
-        public static bool Secp256k1VerifySignaturesWithMessage(byte[] message, byte[][] pubkeys, byte[][] signatures)
-        {
-            return Crypto.ECDsa.Secp256k1.CheckMultiSig(message, pubkeys, signatures);
+            return CryptoLib.VerifyWithECDsa((ByteString)message, pubkey, (ByteString)signature, NamedCurve.secp256k1);
         }
     }
 }

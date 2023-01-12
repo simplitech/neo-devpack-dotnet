@@ -1,12 +1,15 @@
-using Neo.SmartContract.Framework;
+using Neo.SmartContract.Framework.Attributes;
 using System.Numerics;
 
-namespace Compiler.MSIL.TestClasses
+namespace Neo.SmartContract.Framework.UnitTests.TestClasses
 {
     public class Contract_Helper : SmartContract
     {
-        static readonly byte[] data = "0a0b0c0d0E0F".HexToBytes();
-        static readonly byte[] hashResult = "AFsCjUGzicZmXQtWpwVt6hNeJTBwSipJMS".ToScriptHash();
+        [InitialValue("0a0b0c0d0E0F", ContractParameterType.ByteArray)]
+        private static readonly byte[] data = default;
+
+        [InitialValue("NL1JGjDe22U44R57ZXVSeTYFBavEkVmkgF", ContractParameterType.Hash160)]
+        private static readonly byte[] hashResult = default;
 
         public static byte[] TestHexToBytes()
         {
@@ -15,18 +18,43 @@ namespace Compiler.MSIL.TestClasses
 
         public static int AssertCall(bool value)
         {
-            Assert(value == true);
+            ExecutionEngine.Assert(value == true, "ERROR");
             return 5;
         }
 
         public static BigInteger TestToBigInteger(byte[] data)
         {
-            return data.ToBigInteger();
+            return new BigInteger(data);
+        }
+
+        public static BigInteger ModMultiply(BigInteger value, BigInteger y, BigInteger modulus)
+        {
+            return value.ModMultiply(y, modulus);
+        }
+
+        public static BigInteger ModInverse(BigInteger value, BigInteger modulus)
+        {
+            return value.ModInverse(modulus);
+        }
+
+        public static BigInteger ModPow(BigInteger value, BigInteger exponent, BigInteger modulus)
+        {
+            return BigInteger.ModPow(value, exponent, modulus);
+        }
+
+        public static BigInteger TestBigIntegerCast(byte[] data)
+        {
+            return (BigInteger)(ByteString)data;
+        }
+
+        public static BigInteger TestBigIntegerParseHexString(string data)
+        {
+            return BigInteger.Parse(data);
         }
 
         public static void VoidAssertCall(bool value)
         {
-            Assert(value == true);
+            ExecutionEngine.Assert(value == true);
         }
 
         public static byte[] TestByteToByteArray()

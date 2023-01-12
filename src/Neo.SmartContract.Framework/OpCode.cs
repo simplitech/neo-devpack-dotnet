@@ -1,3 +1,13 @@
+// Copyright (C) 2015-2022 The Neo Project.
+// 
+// The Neo.SmartContract.Framework is free software distributed under the MIT 
+// software license, see the accompanying file LICENSE in the main directory 
+// of the project or http://www.opensource.org/licenses/mit-license.php 
+// for more details.
+// 
+// Redistribution and use in source and binary forms with or without
+// modifications are permitted.
+
 namespace Neo.SmartContract.Framework
 {
     public enum OpCode : byte
@@ -10,6 +20,14 @@ namespace Neo.SmartContract.Framework
         PUSHINT64 = 0x03,
         PUSHINT128 = 0x04,
         PUSHINT256 = 0x05,
+        /// <summary>
+        /// Pushes the boolean value <see langword="true"/> onto the stack.
+        /// </summary>
+        PUSHT = 0x08,
+        /// <summary>
+        /// Pushes the boolean value <see langword="false"/> onto the stack.
+        /// </summary>
+        PUSHF = 0x09,
         /// <summary>
         /// Convert the next four bytes to an address, and push the address onto the stack.
         /// </summary>
@@ -196,13 +214,17 @@ namespace Neo.SmartContract.Framework
         /// </summary>
         CALLA = 0x36,
         /// <summary>
+        /// Calls the function which is described by the token.
+        /// </summary>
+        CALLT = 0x37,
+        /// <summary>
         /// It turns the vm state to FAULT immediately, and cannot be caught.
         /// </summary>
-        ABORT = 0x37,
+        ABORT = 0x38,
         /// <summary>
         /// Pop the top value of the stack, if it false, then exit vm execution and set vm state to FAULT.
         /// </summary>
-        ASSERT = 0x38,
+        ASSERT = 0x39,
         /// <summary>
         /// Pop the top value of the stack, and throw it.
         /// </summary>
@@ -603,6 +625,22 @@ namespace Neo.SmartContract.Framework
         /// </summary>
         MOD = 0xA2,
         /// <summary>
+        /// The result of raising value to the exponent power.
+        /// </summary>
+        POW = 0xA3,
+        /// <summary>
+        /// Returns the square root of a specified number.
+        /// </summary>
+        SQRT = 0xA4,
+        /// <summary>
+        /// Performs modulus division on a number multiplied by another number.
+        /// </summary>
+        MODMUL = 0xA5,
+        /// <summary>
+        /// Performs modulus division on a number raised to the power of another number. If the exponent is -1, it will have the calculation of the modular inverse.
+        /// </summary>
+        MODPOW = 0xA6,
+        /// <summary>
         /// Shifts a left b bits, preserving sign.
         /// </summary>
         SHL = 0xA8,
@@ -667,6 +705,14 @@ namespace Neo.SmartContract.Framework
 
         #region Compound-type
 
+        /// <summary>
+        /// A value n is taken from top of main stack. The next n*2 items on main stack are removed, put inside n-sized map and this map is put on top of the main stack.
+        /// </summary>
+        PACKMAP = 0xBE,
+        /// <summary>
+        /// A value n is taken from top of main stack. The next n items on main stack are removed, put inside n-sized struct and this struct is put on top of the main stack.
+        /// </summary>
+        PACKSTRUCT = 0xBF,
         /// <summary>
         /// A value n is taken from top of main stack. The next n items on main stack are removed, put inside n-sized array and this array is put on top of the main stack.
         /// </summary>
@@ -739,6 +785,10 @@ namespace Neo.SmartContract.Framework
         /// Remove all the items from the compound-type.
         /// </summary>
         CLEARITEMS = 0xD3,
+        /// <summary>
+        /// Remove the last element from an array, and push it onto the stack.
+        /// </summary>
+        POPITEM = 0xD4,
 
         #endregion
 

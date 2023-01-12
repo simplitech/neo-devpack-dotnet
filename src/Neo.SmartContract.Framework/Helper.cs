@@ -1,3 +1,14 @@
+// Copyright (C) 2015-2022 The Neo Project.
+// 
+// The Neo.SmartContract.Framework is free software distributed under the MIT 
+// software license, see the accompanying file LICENSE in the main directory 
+// of the project or http://www.opensource.org/licenses/mit-license.php 
+// for more details.
+// 
+// Redistribution and use in source and binary forms with or without
+// modifications are permitted.
+
+using Neo.SmartContract.Framework.Attributes;
 using System;
 using System.Numerics;
 
@@ -5,10 +16,6 @@ namespace Neo.SmartContract.Framework
 {
     public static class Helper
     {
-        internal const string StackItemType_Integer = "0x21";
-        internal const string StackItemType_ByteString = "0x28";
-        internal const string StackItemType_Buffer = "0x30";
-
         /// <summary>
         /// Converts byte to byte[] considering the byte as a BigInteger (0x00 at the end)
         /// </summary>
@@ -19,37 +26,19 @@ namespace Neo.SmartContract.Framework
         /// <summary>
         /// Converts sbyte to byte[].
         /// </summary>
-        [OpCode(OpCode.CONVERT, StackItemType_Buffer)]
+        [OpCode(OpCode.CONVERT, StackItemType.Buffer)]
         public extern static byte[] ToByteArray(this sbyte source);
-
-        /// <summary>
-        /// Converts byte[] to BigInteger. No guarantees are assumed regarding BigInteger working range.
-        /// If it's null it will return 0
-        /// Examples: [0x0a] -> 10; [0x80] -> -128; [] -> 0; [0xff00] -> 255
-        /// </summary>
-        [OpCode(OpCode.DUP)]
-        [OpCode(OpCode.ISNULL)]
-        [OpCode(OpCode.JMPIFNOT, "0x05")]
-        [OpCode(OpCode.PUSH0)]
-        [OpCode(OpCode.SWAP)]
-        [OpCode(OpCode.DROP)]
-        [OpCode(OpCode.CONVERT, StackItemType_Integer)]
-        public extern static BigInteger ToBigInteger(this byte[] source);
-        //{
-        //    if (value == null) return 0;
-        //    return value.ToBigInteger();
-        //}
 
         /// <summary>
         /// Converts string to byte[]. Examples: "hello" -> [0x68656c6c6f]; "" -> []; "Neo" -> [0x4e656f]
         /// </summary>
-        [OpCode(OpCode.CONVERT, StackItemType_Buffer)]
+        [OpCode(OpCode.CONVERT, StackItemType.Buffer)]
         public extern static byte[] ToByteArray(this string source);
 
         /// <summary>
         /// Converts byte[] to string. Examples: [0x68656c6c6f] -> "hello"; [] -> ""; [0x4e656f] -> "Neo"
         /// </summary>
-        [OpCode(OpCode.CONVERT, StackItemType_ByteString)]
+        [OpCode(OpCode.CONVERT, StackItemType.ByteString)]
         public extern static string ToByteString(this byte[] source);
 
         /// <summary>
@@ -69,7 +58,11 @@ namespace Neo.SmartContract.Framework
         /// Examples: 255 -> fault; -128 -> [0x80]; 0 -> [0x00]; 10 -> [0x0a]; 127 -> [0x7f]; 128 -> fault
         /// ScriptAttribute: DUP SIZE PUSH1 NUMEQUAL ASSERT
         /// </summary>
-        [Script(OpCode.DUP, OpCode.SIZE, OpCode.PUSH1, OpCode.NUMEQUAL, OpCode.ASSERT)]
+        [OpCode(OpCode.DUP)]
+        [OpCode(OpCode.SIZE)]
+        [OpCode(OpCode.PUSH1)]
+        [OpCode(OpCode.NUMEQUAL)]
+        [OpCode(OpCode.ASSERT)]
         public extern static sbyte AsSbyte(this BigInteger source);
         //{
         //    Assert(source.AsByteArray().Length == 1);
@@ -81,7 +74,11 @@ namespace Neo.SmartContract.Framework
         /// Examples: 255 -> fault; -128 -> [0x80]; 0 -> [0x00]; 10 -> [0x0a]; 127 -> [0x7f]; 128 -> fault
         /// ScriptAttribute: DUP SIZE PUSH1 NUMEQUAL ASSERT
         /// </summary>
-        [Script(OpCode.DUP, OpCode.SIZE, OpCode.PUSH1, OpCode.NUMEQUAL, OpCode.ASSERT)]
+        [OpCode(OpCode.DUP)]
+        [OpCode(OpCode.SIZE)]
+        [OpCode(OpCode.PUSH1)]
+        [OpCode(OpCode.NUMEQUAL)]
+        [OpCode(OpCode.ASSERT)]
         public extern static sbyte AsSbyte(this int source);
         //{
         //    Assert(((BigInteger)source).AsByteArray().Length == 1);
@@ -93,7 +90,11 @@ namespace Neo.SmartContract.Framework
         /// Examples: 255 -> fault; -128 -> [0x80]; 0 -> [0x00]; 10 -> [0x0a]; 127 -> [0x7f]; 128 -> fault
         /// ScriptAttribute: DUP SIZE PUSH1 NUMEQUAL ASSERT
         /// </summary>
-        [Script(OpCode.DUP, OpCode.SIZE, OpCode.PUSH1, OpCode.NUMEQUAL, OpCode.ASSERT)]
+        [OpCode(OpCode.DUP)]
+        [OpCode(OpCode.SIZE)]
+        [OpCode(OpCode.PUSH1)]
+        [OpCode(OpCode.NUMEQUAL)]
+        [OpCode(OpCode.ASSERT)]
         public extern static byte AsByte(this BigInteger source);
         //{
         //    Assert(source.AsByteArray().Length == 1);
@@ -105,7 +106,11 @@ namespace Neo.SmartContract.Framework
         /// Examples: 255 -> fault; -128 -> [0x80]; 0 -> [0x00]; 10 -> [0x0a]; 127 -> [0x7f]; 128 -> fault
         /// ScriptAttribute: DUP SIZE PUSH1 NUMEQUAL ASSERT
         /// </summary>
-        [Script(OpCode.DUP, OpCode.SIZE, OpCode.PUSH1, OpCode.NUMEQUAL, OpCode.ASSERT)]
+        [OpCode(OpCode.DUP)]
+        [OpCode(OpCode.SIZE)]
+        [OpCode(OpCode.PUSH1)]
+        [OpCode(OpCode.NUMEQUAL)]
+        [OpCode(OpCode.ASSERT)]
         public extern static byte AsByte(this int source);
         //{
         //    Assert(((BigInteger)source).AsByteArray().Length == 1);
@@ -116,55 +121,75 @@ namespace Neo.SmartContract.Framework
         /// Converts parameter to sbyte from (big)integer range -128-255; faults if out-of-range.
         /// Examples: 256 -> fault; -1 -> -1 [0xff]; 255 -> -1 [0xff]; 0 -> 0 [0x00]; 10 -> 10 [0x0a]; 127 -> 127 [0x7f]; 128 -> -128 [0x80]
         /// </summary>
-        public static sbyte ToSbyte(this BigInteger source)
-        {
-            if (source > 127)
-                source -= 256;
-            SmartContract.Assert(source.Within(-128, 128));
-            return (sbyte)(source + 0);
-        }
+        [OpCode(OpCode.DUP)]
+        [OpCode(OpCode.PUSHINT8, "7f")]
+        [OpCode(OpCode.JMPLE, "06")]
+        [OpCode(OpCode.PUSHINT16, "0001")]
+        [OpCode(OpCode.SUB)]
+        [OpCode(OpCode.DUP)]
+        [OpCode(OpCode.PUSHINT8, "80")]
+        [OpCode(OpCode.PUSHINT16, "8000")]
+        [OpCode(OpCode.WITHIN)]
+        [OpCode(OpCode.ASSERT)]
+        public static extern sbyte ToSbyte(this BigInteger source);
 
         /// <summary>
         /// Converts parameter to sbyte from (big)integer range -128-255; faults if out-of-range.
         /// Examples: 256 -> fault; -1 -> -1 [0xff]; 255 -> -1 [0xff]; 0 -> 0 [0x00]; 10 -> 10 [0x0a]; 127 -> 127 [0x7f]; 128 -> -128 [0x80]
         /// </summary>
-        public static sbyte ToSbyte(this int source)
-        {
-            if (source > 127)
-                source -= 256;
-            SmartContract.Assert(source.Within(-128, 128));
-            return (sbyte)(source + 0);
-        }
+        [OpCode(OpCode.DUP)]
+        [OpCode(OpCode.PUSHINT8, "7f")]
+        [OpCode(OpCode.JMPLE, "06")]
+        [OpCode(OpCode.PUSHINT16, "0001")]
+        [OpCode(OpCode.SUB)]
+        [OpCode(OpCode.DUP)]
+        [OpCode(OpCode.PUSHINT8, "80")]
+        [OpCode(OpCode.PUSHINT16, "8000")]
+        [OpCode(OpCode.WITHIN)]
+        [OpCode(OpCode.ASSERT)]
+        public static extern sbyte ToSbyte(this int source);
 
         /// <summary>
         /// Converts parameter to byte from (big)integer range 0-255; faults if out-of-range.
         /// Examples: 256 -> fault; -1 -> fault; 255 -> -1 [0xff]; 0 -> 0 [0x00]; 10 -> 10 [0x0a]; 127 -> 127 [0x7f]; 128 -> -128 [0x80]
         /// </summary>
-        public static byte ToByte(this BigInteger source)
-        {
-            SmartContract.Assert(source.Within(0, 256));
-            if (source > 127)
-                source -= 256;
-            return (byte)(source + 0);
-        }
+        [OpCode(OpCode.DUP)]
+        [OpCode(OpCode.PUSH0)]
+        [OpCode(OpCode.PUSHINT16, "0001")]
+        [OpCode(OpCode.WITHIN)]
+        [OpCode(OpCode.ASSERT)]
+        [OpCode(OpCode.DUP)]
+        [OpCode(OpCode.PUSHINT8, "7f")]
+        [OpCode(OpCode.JMPLE, "06")]
+        [OpCode(OpCode.PUSHINT16, "0001")]
+        [OpCode(OpCode.SUB)]
+        public static extern byte ToByte(this BigInteger source);
 
         /// <summary>
         /// Converts parameter to byte from (big)integer range 0-255; faults if out-of-range.
         /// Examples: 256 -> fault; -1 -> fault; 255 -> -1 [0xff]; 0 -> 0 [0x00]; 10 -> 10 [0x0a]; 127 -> 127 [0x7f]; 128 -> -128 [0x80]
         /// </summary>
-        public static byte ToByte(this int source)
-        {
-            SmartContract.Assert(source.Within(0, 256));
-            if (source > 127)
-                source -= 256;
-            return (byte)(source + 0);
-        }
+        [OpCode(OpCode.DUP)]
+        [OpCode(OpCode.PUSH0)]
+        [OpCode(OpCode.PUSHINT16, "0001")]
+        [OpCode(OpCode.WITHIN)]
+        [OpCode(OpCode.ASSERT)]
+        [OpCode(OpCode.DUP)]
+        [OpCode(OpCode.PUSHINT8, "7f")]
+        [OpCode(OpCode.JMPLE, "06")]
+        [OpCode(OpCode.PUSHINT16, "0001")]
+        [OpCode(OpCode.SUB)]
+        public static extern byte ToByte(this int source);
 
         [OpCode(OpCode.CAT)]
         public extern static byte[] Concat(this byte[] first, byte[] second);
 
-        [NonemitWithConvert(ConvertMethod.HexToBytes)]
-        public extern static byte[] HexToBytes(this string hex, bool reverse = false);
+        [OpCode(OpCode.CAT)]
+        public extern static byte[] Concat(this byte[] first, ByteString second);
+
+        [OpCode(OpCode.CAT)]
+        [OpCode(OpCode.CONVERT, StackItemType.ByteString)]
+        public extern static ByteString Concat(this ByteString first, ByteString second);
 
         [OpCode(OpCode.SUBSTR)]
         public extern static byte[] Range(this byte[] source, int index, int count);
@@ -189,23 +214,20 @@ namespace Neo.SmartContract.Framework
         [OpCode(OpCode.REVERSEITEMS)]
         public extern static byte[] Reverse(this Array source);
 
-        [Script]
-        public extern static Delegate ToDelegate(this byte[] source);
-
         /// <summary>
-        /// ToScriptHash converts a base-58 Address to ScriptHash in little-endian byte array.
-        /// Example: "AFsCjUGzicZmXQtWpwVt6hNeJTBwSipJMS".ToScriptHash() generates 0102030405060708090a0b0c0d0e0faabbccddee
+        /// Returns the square root of number x
         /// </summary>
-        [NonemitWithConvert(ConvertMethod.ToScriptHash)]
-        public extern static byte[] ToScriptHash(this string address);
+        /// <param name="x"></param>
+        /// <returns></returns>
+        [OpCode(OpCode.SQRT)]
+        public extern static BigInteger Sqrt(this BigInteger x);
 
-        [NonemitWithConvert(ConvertMethod.ToBigInteger)]
-        public extern static BigInteger ToBigInteger(this string text);
+        [OpCode(OpCode.MODMUL)]
+        public extern static BigInteger ModMultiply(this BigInteger x, BigInteger y, BigInteger modulus);
 
-        [Syscall("System.Binary.Serialize")]
-        public extern static byte[] Serialize(this object source);
-
-        [Syscall("System.Binary.Deserialize")]
-        public extern static object Deserialize(this byte[] source);
+        public static BigInteger ModInverse(this BigInteger value, BigInteger modulus)
+        {
+            return BigInteger.ModPow(value, -1, modulus);
+        }
     }
 }

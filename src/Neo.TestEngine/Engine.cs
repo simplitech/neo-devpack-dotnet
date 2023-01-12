@@ -1,0 +1,421 @@
+// Copyright (C) 2015-2022 The Neo Project.
+// 
+// The Neo.Compiler.CSharp is free software distributed under the MIT 
+// software license, see the accompanying file LICENSE in the main directory 
+// of the project or http://www.opensource.org/licenses/mit-license.php 
+// for more details.
+// 
+// Redistribution and use in source and binary forms with or without
+// modifications are permitted.
+
+using Neo.Cryptography.ECC;
+using Neo.IO;
+using Neo.Json;
+using Neo.Network.P2P.Payloads;
+using Neo.Persistence;
+using Neo.SmartContract;
+using Neo.SmartContract.Manifest;
+using Neo.SmartContract.Native;
+using Neo.VM;
+using Neo.Wallets;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace Neo.TestingEngine
+{
+    public class Engine
+    {
+        private static Engine? instance = null;
+        public static Engine Instance
+        {
+            get
+            {
+                if (instance == null)
+                {
+                    instance = new Engine();
+                }
+                return instance;
+            }
+        }
+
+        private TestEngine engine;
+        private Transaction? currentTx = null;
+        public UInt160 Sender => currentTx?.Sender;
+        private ECPoint PubKey => wallet.DefaultAccount.GetKey().PublicKey;
+        private TestWallet wallet;
+
+        private Engine()
+        {
+            var _ = TestBlockchain.TheNeoSystem;
+            wallet = new TestWallet();
+            engine = SetupNativeContracts();
+        }
+
+        public uint Height => NativeContract.Ledger.CurrentIndex(engine.Snapshot);
+
+        public DataCache Snapshot => engine.Snapshot;
+
+        public void Reset()
+        {
+            engine = SetupNativeContracts();
+        }
+
+        public Engine SetEntryScript(string path)
+        {
+            AddSmartContract(path);
+            return this;
+        }
+
+        public Engine SetEntryScript(UInt160 contractHash)
+        {
+            engine.AddEntryScript(contractHash);
+            return this;
+        }
+
+        public Engine SetCallingScript(UInt160 contractHash)
+        {
+            engine.callingScriptHash = contractHash;
+            return this;
+        }
+
+        public Engine AddSmartContract(TestContract contract)
+        {
+            var state = AddSmartContract(contract.nefPath);
+            contract.buildScript = state;
+            return this;
+        }
+
+        private object? AddSmartContract(string path)
+        {
+            engine.AddEntryScript(path);
+
+            if (engine.ScriptContext?.Success == true)
+            {
+                var hash = TestHelper.GetContractHash(engine.Nef.CheckSum, ContractManifest.FromJson(engine.Manifest).Name);
+                var snapshot = engine.Snapshot;
+
+                ContractState state;
+                if (!snapshot.ContainsContract(hash))
+                {
+                    DeployContract(engine.ScriptContext);
+                    state = NativeContract.ContractManagement.GetContract(snapshot, hash);
+                    if (state is null)
+                    {
+                        state = new ContractState()
+                        {
+                            Id = snapshot.GetNextAvailableId(),
+                            Hash = hash,
+                            Nef = engine.Nef,
+                            Manifest = ContractManifest.FromJson(engine.Manifest),
+                        };
+                        snapshot.TryContractAdd(state);
+                    }
+                }
+                else
+                {
+                    state = NativeContract.ContractManagement.GetContract(snapshot, hash);
+                    engine.AddEntryScript(new BuildScript(state.Nef, state.Manifest.ToJson(), hash));
+                }
+            }
+            return engine.ScriptContext;
+        }
+
+        private void DeployContract(BuildScript scriptContext)
+        {
+            var deploy_method_name = "deploy";
+            var deploy_args = new ContractParameter[]
+            {
+                new ContractParameter(ContractParameterType.ByteArray) {
+                    Value = scriptContext.Nef.ToArray()
+                },
+                new ContractParameter(ContractParameterType.ByteArray) {
+                    Value = scriptContext.Manifest.ToByteArray(false)
+                },
+                new ContractParameter(ContractParameterType.Any)
+            };
+
+            engine.AddEntryScript(NativeContract.ContractManagement.Hash);
+            byte[] script;
+            using (ScriptBuilder scriptBuilder = new ScriptBuilder())
+            {
+                scriptBuilder.EmitDynamicCall(NativeContract.ContractManagement.Hash, deploy_method_name, deploy_args);
+                script = scriptBuilder.ToArray();
+            }
+            var stackItemsArgs = deploy_args.Select(a => a.ToStackItem()).ToArray();
+            engine.RunNativeContract(script, deploy_method_name, stackItemsArgs);
+
+            if (engine.State == VMState.FAULT && engine.FaultException.Message?.StartsWith("Contract Already Exists") != true)
+            {
+                // deploying a contract already deployed is the only error expected to happen here
+                throw engine.FaultException;
+            }
+
+            engine.SetContext(scriptContext);
+        }
+
+        public Engine IncreaseBlockCount(uint newHeight)
+        {
+            var snapshot = engine.Snapshot;
+            if (snapshot.Blocks().Count <= newHeight)
+            {
+                Block newBlock;
+                Block? lastBlock = null;
+                if (snapshot.Blocks().Count == 0)
+                {
+                    newBlock = TestBlockchain.TheNeoSystem.GenesisBlock;
+                    snapshot.AddOrUpdateTransactions(newBlock.Transactions, newBlock.Index);
+                }
+                else
+                {
+                    newBlock = CreateBlock();
+                }
+
+                while (snapshot.Blocks().Count <= newHeight)
+                {
+                    var hash = newBlock.Hash;
+                    var trim = newBlock.Trim();
+                    snapshot.BlocksAddOrUpdate(hash, trim);
+                    lastBlock = newBlock;
+                    newBlock = CreateBlock();
+                }
+
+                snapshot.SetCurrentBlockHash(lastBlock.Index, lastBlock.Hash);
+            }
+            return this;
+        }
+
+        public Engine SetStorage(Dictionary<StorageKey, StorageItem> storage)
+        {
+            var snapshot = (TestDataCache)engine.InitSnapshot;
+            if (engine.Snapshot is TestDataCache engineSnapshot)
+            {
+                snapshot = engineSnapshot;
+            }
+
+            if (snapshot is TestDataCache)
+            {
+                foreach (var (key, value) in storage)
+                {
+                    snapshot.AddForTest(key, value);
+                }
+            }
+            snapshot.InnerCommit();
+            return this;
+        }
+
+        public Engine SetSigners(Signer[] signers)
+        {
+            if (signers.Length > 0)
+            {
+                var newSigners = new List<Signer>();
+                foreach (var signer in signers)
+                {
+                    newSigners.Add(signer);
+                    wallet.AddSignerAccount(signer.Account);
+                }
+                currentTx.Signers = newSigners.ToArray();
+            }
+            return this;
+        }
+
+        internal void SetTxAttributes(TransactionAttribute[] attributes)
+        {
+            currentTx.Attributes = attributes.Where(attr => attr != null).ToArray();
+        }
+
+        public Engine AddBlock(TestBlock block)
+        {
+            var snapshot = engine.Snapshot;
+            var result = AddBlock(block.Block);
+            foreach (var txState in block.Transactions)
+            {
+                snapshot.AddOrUpdateTransactionState(txState.Transaction, txState.State);
+            }
+            return result;
+        }
+
+        public Engine AddBlock(Block block)
+        {
+            var snapshot = engine.Snapshot;
+            Block? currentBlock = null;
+            if (Height < block.Index || snapshot.Blocks().Count == 0)
+            {
+                IncreaseBlockCount(block.Index);
+                currentBlock = engine.Snapshot.GetLastBlock();
+            }
+            else
+            {
+                currentBlock = NativeContract.Ledger.GetBlock(snapshot, block.Index);
+            }
+
+            if (currentBlock != null)
+            {
+                var hash = currentBlock.Hash;
+                currentBlock.Header.Timestamp = block.Header.Timestamp;
+
+                if (currentBlock.Transactions.Length > 0)
+                {
+                    var tx = currentBlock.Transactions.ToList();
+                    tx.AddRange(block.Transactions);
+                    currentBlock.Transactions = tx.ToArray();
+                }
+                else
+                {
+                    currentBlock.Transactions = block.Transactions;
+                }
+
+                foreach (var tx in block.Transactions)
+                {
+                    tx.ValidUntilBlock = block.Index + ProtocolSettings.Default.MaxValidUntilBlockIncrement;
+                }
+
+                var trimmed = currentBlock.Trim();
+                snapshot.UpdateChangedBlocks(hash, trimmed.Hash, trimmed);
+            }
+
+            snapshot.AddOrUpdateTransactions(block.Transactions);
+            return this;
+        }
+
+        public JObject Run(string method, ContractParameter[] args)
+        {
+            TestDataCache snapshot = null;
+            if (engine.Snapshot is TestDataCache engineSnapshot)
+            {
+                snapshot = engineSnapshot;
+            }
+            else if (engine.InitSnapshot is TestDataCache engineInitSnapshot)
+            {
+                engine.Snapshot.InnerCommit();
+                snapshot = engineInitSnapshot;
+            }
+
+            if (snapshot is not null)
+            {
+                if (snapshot.Blocks().Count == 0)
+                {
+                    // don't use genesis block as persisting block
+                    IncreaseBlockCount(1);
+                }
+
+                var lastBlock = snapshot.GetLastBlock();
+                if (lastBlock.Index == 0)
+                {
+                    // don't use genesis block as persisting block
+                    IncreaseBlockCount(1);
+                    lastBlock = snapshot.GetLastBlock();
+                }
+
+                engine.PersistingBlock.Header = lastBlock.Header;
+                engine.PersistingBlock.Transactions = lastBlock.Transactions;
+
+                currentTx.ValidUntilBlock = lastBlock.Index;
+                snapshot.SetCurrentBlockHash(lastBlock.Index, lastBlock.Hash);
+            }
+
+            var stackItemsArgs = args.Select(a => a.ToStackItem(engine.ReferenceCounter)).ToArray();
+            if (engine.ScriptContext is BuildNative native)
+            {
+                byte[] script;
+                using (ScriptBuilder scriptBuilder = new ScriptBuilder())
+                {
+                    scriptBuilder.EmitDynamicCall(native.NativeContract.Hash, method, args);
+                    script = scriptBuilder.ToArray();
+                }
+                engine.RunNativeContract(script, method, stackItemsArgs);
+            }
+            else
+            {
+                using (ScriptBuilder scriptBuilder = new ScriptBuilder())
+                {
+                    scriptBuilder.EmitDynamicCall(engine.EntryScriptHash, method, args);
+                    currentTx.Script = scriptBuilder.ToArray();
+                }
+                engine.ExecuteTestCaseStandard(method, stackItemsArgs);
+            }
+
+            currentTx.ValidUntilBlock = engine.Snapshot.GetLastBlock().Index + ProtocolSettings.Default.MaxValidUntilBlockIncrement;
+            currentTx.SystemFee = engine.GasConsumed;
+            currentTx.NetworkFee = wallet.CalculateNetworkFee(engine.Snapshot, currentTx);
+            engine.Snapshot.AddOrUpdateTransactionState(currentTx, engine.State);
+
+            return engine.ToJson();
+        }
+
+        private TestEngine SetupNativeContracts()
+        {
+            currentTx = new Transaction()
+            {
+                Attributes = new TransactionAttribute[0],
+                Script = new byte[0],
+                Signers = new Signer[] {
+                    new Signer() {
+                        Account = wallet.DefaultAccount.ScriptHash,
+                        Scopes = WitnessScope.CalledByEntry,
+                        AllowedContracts = new UInt160[] { },
+                        AllowedGroups = new ECPoint[] { },
+                        Rules = new WitnessRule[] { }
+                    }
+                },
+                Witnesses = new Witness[0],
+                NetworkFee = 1,
+                Nonce = 2,
+                SystemFee = 3,
+                Version = 4
+            };
+            var persistingBlock = new Block()
+            {
+                Header = new Header()
+                {
+                    Index = 0
+                }
+            };
+            TestEngine engine = new TestEngine(TriggerType.Application, currentTx, new TestDataCache(), persistingBlock: persistingBlock);
+
+            engine.ClearNotifications();
+            return engine;
+        }
+
+        private Block CreateBlock(Block? originBlock = null)
+        {
+            TrimmedBlock? trimmedBlock = null;
+            var blocks = engine.Snapshot.Blocks();
+            if (blocks.Count > 0)
+            {
+                trimmedBlock = blocks.Last();
+            }
+
+            if (trimmedBlock == null)
+            {
+                trimmedBlock = TestBlockchain.TheNeoSystem.GenesisBlock.Trim();
+            }
+
+            var newBlock = new Block()
+            {
+                Header = new Header()
+                {
+                    Index = trimmedBlock.Index + 1,
+                    Timestamp = trimmedBlock.Header.Timestamp + TestBlockchain.TheNeoSystem.Settings.MillisecondsPerBlock,
+                    Nonce = trimmedBlock.Header.Nonce,
+                    Witness = new Witness()
+                    {
+                        InvocationScript = new byte[0],
+                        VerificationScript = Contract.CreateSignatureRedeemScript(PubKey)
+                    },
+                    NextConsensus = trimmedBlock.Header.NextConsensus,
+                    MerkleRoot = trimmedBlock.Header.MerkleRoot,
+                    PrevHash = trimmedBlock.Hash
+                },
+                Transactions = new Transaction[0]
+            };
+
+            if (originBlock != null)
+            {
+                newBlock.Header.Timestamp = originBlock.Header.Timestamp;
+            }
+
+            return newBlock;
+        }
+    }
+}

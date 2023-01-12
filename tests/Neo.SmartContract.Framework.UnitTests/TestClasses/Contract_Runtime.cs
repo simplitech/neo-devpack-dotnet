@@ -1,8 +1,9 @@
-using Neo.SmartContract.Framework.Services.Neo;
+using System.Numerics;
+using Neo.SmartContract.Framework.Services;
 
-namespace Neo.Compiler.MSIL.TestClasses
+namespace Neo.SmartContract.Framework.UnitTests.TestClasses
 {
-    public class Contract_Runtime : SmartContract.Framework.SmartContract
+    public class Contract_Runtime : SmartContract
     {
         public static uint GetInvocationCounter()
         {
@@ -12,6 +13,11 @@ namespace Neo.Compiler.MSIL.TestClasses
         public static ulong GetTime()
         {
             return Runtime.Time;
+        }
+
+        public static BigInteger GetRandom()
+        {
+            return Runtime.GetRandom();
         }
 
         public static long GetGasLeft()
@@ -24,6 +30,16 @@ namespace Neo.Compiler.MSIL.TestClasses
             return Runtime.Platform;
         }
 
+        public static uint GetNetwork()
+        {
+            return Runtime.GetNetwork();
+        }
+
+        public static uint GetAddressVersion()
+        {
+            return Runtime.AddressVersion;
+        }
+
         public static byte GetTrigger()
         {
             return (byte)Runtime.Trigger;
@@ -34,12 +50,12 @@ namespace Neo.Compiler.MSIL.TestClasses
             Runtime.Log(message);
         }
 
-        public static bool CheckWitness(byte[] hashOrPubkey)
+        public static bool CheckWitness(UInt160 hash)
         {
-            return Runtime.CheckWitness(hashOrPubkey);
+            return Runtime.CheckWitness(hash);
         }
 
-        public static int GetNotificationsCount(byte[] hash)
+        public static int GetNotificationsCount(UInt160 hash)
         {
             var notifications = Runtime.GetNotifications(hash);
             return notifications.Length;
@@ -59,26 +75,71 @@ namespace Neo.Compiler.MSIL.TestClasses
             return sum;
         }
 
-        public static int GetNotifications(byte[] hash)
+        public static int GetNotifications(UInt160 hash)
         {
             int sum = 0;
             var notifications = Runtime.GetNotifications(hash);
 
             for (int x = 0; x < notifications.Length; x++)
             {
-                var notify = notifications[x];
-
-                // Check that the hash is working well
-
-                for (int y = 0; y < notify.ScriptHash.Length; y++)
-                {
-                    if (notify.ScriptHash[y] != hash[y]) return int.MinValue;
-                }
-
-                sum += (int)notify.State[0];
+                sum += (int)notifications[x].State[0];
             }
 
             return sum;
+        }
+
+        public static object GetTransactionHash()
+        {
+            var tx = (Transaction)Runtime.ScriptContainer;
+            return tx?.Hash;
+        }
+
+        public static object GetTransactionVersion()
+        {
+            var tx = (Transaction)Runtime.ScriptContainer;
+            return tx?.Version;
+        }
+
+        public static object GetTransactionNonce()
+        {
+            var tx = (Transaction)Runtime.ScriptContainer;
+            return tx?.Nonce;
+        }
+
+        public static object GetTransactionSender()
+        {
+            var tx = (Transaction)Runtime.ScriptContainer;
+            return tx?.Sender;
+        }
+
+        public static object GetTransactionSystemFee()
+        {
+            var tx = (Transaction)Runtime.ScriptContainer;
+            return tx?.SystemFee;
+        }
+
+        public static object GetTransactionNetworkFee()
+        {
+            var tx = (Transaction)Runtime.ScriptContainer;
+            return tx?.NetworkFee;
+        }
+
+        public static object GetTransactionValidUntilBlock()
+        {
+            var tx = (Transaction)Runtime.ScriptContainer;
+            return tx?.ValidUntilBlock;
+        }
+
+        public static object GetTransactionScript()
+        {
+            var tx = (Transaction)Runtime.ScriptContainer;
+            return tx?.Script;
+        }
+
+        public static int DynamicSum(int a, int b)
+        {
+            ByteString script = (ByteString)new byte[] { 0x9E }; // ADD
+            return (int)Runtime.LoadScript(script, CallFlags.All, new object[] { a, b });
         }
     }
 }
